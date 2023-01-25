@@ -17,16 +17,7 @@ $Global:InfoLine = "`t[*]"
 function Write-Good { param( $String ) Write-Host $Global:PlusLine  $String -ForegroundColor 'Green'}
 function Write-Bad  { param( $String ) Write-Host $Global:ErrorLine $String -ForegroundColor 'red'  }
 function Write-Info { param( $String ) Write-Host $Global:InfoLine $String -ForegroundColor 'gray' }
-function ShowBanner {
-    $banner  = @()
-    $banner+= $Global:Spacing + ''
-    $banner+= $Global:Spacing + 'VULN AD - Vulnerable Active Directory'
-    $banner+= $Global:Spacing + ''                                                  
-    $banner+= $Global:Spacing + 'By wazehell @safe_buffer'
-    $banner | foreach-object {
-        Write-Host $_ -ForegroundColor (Get-Random -Input @('Green','Cyan','Yellow','gray','white'))
-    }                             
-}
+
 function VulnAD-GetRandom {
    Param(
      [array]$InputList
@@ -40,7 +31,7 @@ function VulnAD-AddADGroup {
     foreach ($group in $GroupList) {
         Write-Info "Creating $group Group"
         Try { New-ADGroup -name $group -GroupScope Global } Catch {}
-        for ($i=1; $i -le (Get-Random -Maximum 20); $i=$i+1 ) {
+        for ($i=1; $i -le (Get-Random -Minimum 10 -Maximum 20); $i=$i+1 ) {
             $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
             Write-Info "Adding $randomuser to $group"
             Try { Add-ADGroupMember -Identity $group -Members $randomuser } Catch {}
@@ -108,7 +99,7 @@ function VulnAD-BadAcls {
         VulnAD-AddACL -Source $SrcGroup.sid -Destination $DstGroup.DistinguishedName -Rights $abuse
         Write-Info "BadACL $abuse $mgroup to $hgroup"
     }
-    for ($i=1; $i -le (Get-Random -Maximum 25); $i=$i+1 ) {
+    for ($i=1; $i -le 25; $i=$i+1 ) {
         $abuse = (VulnAD-GetRandom -InputList $Global:BadACL);
         $randomuser = VulnAD-GetRandom -InputList $Global:CreatedUsers
         $randomgroup = VulnAD-GetRandom -InputList $Global:AllObjects
@@ -142,7 +133,7 @@ function VulnAD-Kerberoasting {
     }
 }
 function VulnAD-ASREPRoasting {
-    for ($i=1; $i -le (Get-Random -Maximum 6); $i=$i+1 ) {
+    for ($i=1; $i -le 4; $i=$i+1 ) {
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         $password = VulnAD-GetRandom -InputList $Global:BadPasswords;
         Set-AdAccountPassword -Identity $randomuser -Reset -NewPassword (ConvertTo-SecureString $password -AsPlainText -Force)
@@ -151,7 +142,7 @@ function VulnAD-ASREPRoasting {
     }
 }
 function VulnAD-DnsAdmins {
-    for ($i=1; $i -le (Get-Random -Maximum 6); $i=$i+1 ) {
+    for ($i=1; $i -le 6; $i=$i+1 ) {
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         Add-ADGroupMember -Identity "DnsAdmins" -Members $randomuser
         Write-Info "DnsAdmins : $randomuser"
@@ -161,7 +152,7 @@ function VulnAD-DnsAdmins {
     Write-Info "DnsAdmins Nested Group : $randomg"
 }
 function VulnAD-PwdInObjectDescription {
-    for ($i=1; $i -le (Get-Random -Maximum 6); $i=$i+1 ) {
+    for ($i=1; $i -le 6; $i=$i+1 ) {
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         $password = ([System.Web.Security.Membership]::GeneratePassword(12,2))
         Set-AdAccountPassword -Identity $randomuser -Reset -NewPassword (ConvertTo-SecureString $password -AsPlainText -Force)
@@ -170,7 +161,7 @@ function VulnAD-PwdInObjectDescription {
     }
 }
 function VulnAD-DefaultPassword {
-    for ($i=1; $i -le (Get-Random -Maximum 5); $i=$i+1 ) {
+    for ($i=1; $i -le 5; $i=$i+1 ) {
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         $password = "Changeme123!";
         Set-AdAccountPassword -Identity $randomuser -Reset -NewPassword (ConvertTo-SecureString $password -AsPlainText -Force)
@@ -181,7 +172,7 @@ function VulnAD-DefaultPassword {
 }
 function VulnAD-PasswordSpraying {
     $same_password = "ncc1701";
-    for ($i=1; $i -le (Get-Random -Maximum 12); $i=$i+1 ) {
+    for ($i=1; $i -le 12; $i=$i+1 ) {
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         Set-AdAccountPassword -Identity $randomuser -Reset -NewPassword (ConvertTo-SecureString $same_password -AsPlainText -Force)
         Set-ADUser $randomuser -Description "Shared User"
@@ -189,7 +180,7 @@ function VulnAD-PasswordSpraying {
     }
 }
 function VulnAD-DCSync {
-    for ($i=1; $i -le (Get-Random -Maximum 6); $i=$i+1 ) {
+    for ($i=1; $i -le 6; $i=$i+1 ) {
         $ADObject = [ADSI]("LDAP://" + (Get-ADDomain $Global:Domain).DistinguishedName)
         $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
         $sid = (Get-ADUser -Identity $randomuser).sid
@@ -214,6 +205,36 @@ function VulnAD-DCSync {
 function VulnAD-DisableSMBSigning {
     Set-SmbClientConfiguration -RequireSecuritySignature 0 -EnableSecuritySignature 0 -Confirm -Force
 }
+function VulnAD-Misc {
+    for ($i=1; $i -le 3; $i=$i+1 ) {
+        $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
+        Set-ADAccountControl -Identity $randomuser -TrustedForDelegation $True
+        Write-Info "Unconstrained Delegation given to : $randomuser"
+    }
+    for ($i=1; $i -le 8; $i=$i+1 ) {
+        $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
+        Set-ADAccountControl -Identity $randomuser -PasswordNeverExpires $True
+        Write-Info "Never expiring password on : $randomuser"
+    }
+    $anonymousId = New-Object System.Security.Principal.NTAccount "NT AUTHORITY\ANONYMOUS LOGON"
+    $secInheritanceAll = [System.DirectoryServices.ActiveDirectorySecurityInheritance] "All"
+    $Ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $anonymousId,"ReadProperty, GenericExecute","Allow",$secInheritanceAll
+    $domainDN = (Get-ADDomain).DistinguishedName
+    $Acl = Get-Acl -Path "AD:$($domainDN)"
+    $Acl.AddAccessRule($Ace)
+    Set-Acl -Path "AD:$($domainDN)" -AclObject $Acl
+    
+    for ($i=1; $i -le 1; $i=$i+1 ) {
+        $randomuser = (VulnAD-GetRandom -InputList $Global:CreatedUsers)
+        New-GPO -Name "NormalGPO" -comment "Change Wallpaper"
+        New-GPLink -Name "NormalGPO" -Target (Get-ADDomain).DistinguishedName
+        Set-GPRegistryValue -Name "NormalGPO" -key "HKEY_CURRENT_USER\Control Panel\Colors" -ValueName Background -Type String -Value "100 175 200"  
+        Set-GPRegistryValue -Name "NormalGPO" -key "HKEY_CURRENT_USER\Control Panel\Desktop" -ValueName Wallpaper -Type String -Value ""  
+        Set-GPRegistryValue -Name "NormalGPO" -Key "HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\CurrentVersion\WinLogon" -ValueName SyncForegroundPolicy -Type DWORD -Value 1
+        Set-GPPermissions -Name "NormalGPO" -PermissionLevel GpoEditDeleteModifySecurity -TargetName $randomuser -TargetType "User"
+    }
+}
+
 function Invoke-VulnAD {
     Param(
         [int]$UsersLimit = 100,
@@ -222,7 +243,6 @@ function Invoke-VulnAD {
         [System.String]
         $DomainName
     )
-    ShowBanner
     $Global:Domain = $DomainName
     Set-ADDefaultDomainPasswordPolicy -Identity $Global:Domain -LockoutDuration 00:01:00 -LockoutObservationWindow 00:01:00 -ComplexityEnabled $false -ReversibleEncryptionEnabled $False -MinPasswordLength 4
     VulnAD-AddADUser -limit $UsersLimit
@@ -251,4 +271,6 @@ function Invoke-VulnAD {
     Write-Good "DCSync Done"
     VulnAD-DisableSMBSigning
     Write-Good "SMB Signing Disabled"
+    VulnAD-Misc
+    Write-Good "Done ! Happy graphing :)"
 }
